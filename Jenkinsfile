@@ -15,12 +15,7 @@ pipeline {
         stage('Checkout') {
             steps { checkout scm }
         }
-        stage('Build') {
-            steps {
-                sh 'docker build -t ${IMAGE}:${BUILD_NUMBER} -t ${IMAGE}:latest .'
-            }
-        }
-        stage('Push') {
+        stage('Build & Push') {
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: 'dockerhub',
@@ -28,6 +23,7 @@ pipeline {
                     passwordVariable: 'DH_PASS')]) {
                     sh '''
                         echo "$DH_PASS" | docker login -u "$DH_USER" --password-stdin
+                        docker build -t ${IMAGE}:${BUILD_NUMBER} -t ${IMAGE}:latest .
                         docker push ${IMAGE}:${BUILD_NUMBER}
                         docker push ${IMAGE}:latest
                         docker logout
