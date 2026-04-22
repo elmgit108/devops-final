@@ -2,7 +2,9 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = 'html-site'
+        DOCKERHUB_USER = 'elmaws108'
+        IMAGE_NAME     = 'html-site'
+        IMAGE          = "${DOCKERHUB_USER}/${IMAGE_NAME}"
     }
 
     triggers {
@@ -13,15 +15,29 @@ pipeline {
         stage('Checkout') {
             steps { checkout scm }
         }
-        stage('Build Image') {
+        stage('Build') {
             steps {
-                sh 'docker build -t ${IMAGE_NAME}:${BUILD_NUMBER} -t ${IMAGE_NAME}:latest .'
+                sh 'docker build -t ${IMAGE}:${BUILD_NUMBER} -t ${IMAGE}:latest .'
             }
         }
-        stage('Verify') {
+        stage('Push') {
             steps {
-                sh 'docker images | grep ${IMAGE_NAME}'
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub',
+                    usernameVariable: 'DH_USER',
+                    passwordVariable: 'DH_PASS')]) {
+                    sh '''
+                        echo "$DH_PASS" | docker login -u "$DH_USER" --password-stdin
+                        docker push ${IMAGE}:${BUILD_NUMBER}
+                        docker push ${IMAGE}:latest
+                        docker logout
+                    '''
+                }
             }
         }
+    }
+
+    post {
+        always { sh 'docker image prune -f || true' }
     }
 }
